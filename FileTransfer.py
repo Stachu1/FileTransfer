@@ -14,6 +14,7 @@ class File:
         self.size = os.path.getsize(self.path)
 
 
+
 class Network:
     def __init__(self, role="server", file=None, server_ip=None, max_packet_size=2048):
         self.hostname = socket.gethostname()
@@ -22,22 +23,13 @@ class Network:
         self.max_packet_size = max_packet_size
         self.timeout = 5
         if role == "client":
-            user_input = input(f"\n{Fore.BLUE}Enter reciver's IP or press ENTER to perform network scan: ")
-            if len(user_input.split(".")) == 4:
-                self.server_ip = user_input
-            else:
-                print(f"\n{Fore.MAGENTA}Sacnning...{Fore.RESET}")
-                devices_online = self.scan_network()
-                devide_index = int(input("Choose device from list: ")) - 1
-                self.server_ip = devices_online[devide_index][1]
-                self.server_hostname = devices_online[devide_index][0]
-                
-            self.file = File(input("Enter path to the file: "))
             self.client()
                 
             
         elif role == "server":
             self.server()
+    
+    
     
     def server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -73,6 +65,7 @@ class Network:
                         print("\n\n")
                         print(f"{Fore.MAGENTA}Waiting for files...\n{Fore.RESET}")
                         
+                        
     
     def recive_file(self, conn, file_name, file_size):
         time_start = t.time()
@@ -88,23 +81,56 @@ class Network:
                     printProgressBar(progress, file_size, time_start)
             
             
+            
     def client(self):
-        print(f"[{Fore.GREEN}File: {Fore.RESET}{self.file.name} {Fore.YELLOW}Size: {Fore.RESET}{self.file.size}] --> [{Fore.GREEN}Hostname: {Fore.RESET}{self.server_hostname} {Fore.BLUE}IP: {Fore.RESET}{self.server_ip}]")
-        with socket.socket() as s:
-            try:
-                s.connect((self.server_ip, self.port))
-            except socket.error as e:
-                return False, e
-            msg = f"{self.file.name}:{self.hostname}:{self.file.size}"
-            s.send(msg.encode())
-            r = s.recv(self.max_packet_size).decode()
-            if r == "y":
-                print(f"{Fore.GREEN}File accepted{Fore.RESET}")
-                print(f"\n{Fore.MAGENTA}Sending...")
-                self.send_file(s)
-                print(f"{Fore.GREEN}Sent")
-            else:
-                print(f"{Fore.RED}File rejected{Fore.RESET}")
+        user_input = input(f"\n{Fore.BLUE}Enter reciver's IP or press ENTER to perform network scan: ")
+        if len(user_input.split(".")) == 4:
+            self.server_ip = user_input
+        else:
+            print(f"\n{Fore.MAGENTA}Sacnning...{Fore.RESET}")
+            devices_online = self.scan_network()
+            devide_index = int(input("Choose device from list: ")) - 1
+            device = False
+            while not device:
+                try:
+                    self.server_ip = devices_online[devide_index][1]
+                    self.server_hostname = devices_online[devide_index][0]
+                    device = True
+                except:
+                    devide_index = int(input("Choose device from list: ")) - 1
+
+            running = True
+            while running:
+                if self.client_loop():
+                    running = False
+                else:
+                    print(f"{Fore.RED}\nError\n{Fore.RESET}")
+            exit()
+        
+    
+    def client_loop(self):
+        try:
+            self.file = File(input("Enter path to the file: "))
+            print(f"[{Fore.GREEN}File: {Fore.RESET}{self.file.name} {Fore.YELLOW}Size: {Fore.RESET}{convert_size((self.file.size))}] --> [{Fore.GREEN}Hostname: {Fore.RESET}{self.server_hostname} {Fore.BLUE}IP: {Fore.RESET}{self.server_ip}]")
+            with socket.socket() as s:
+                try:
+                    s.connect((self.server_ip, self.port))
+                except socket.error as e:
+                    return False, e
+                msg = f"{self.file.name}:{self.hostname}:{self.file.size}"
+                s.send(msg.encode())
+                r = s.recv(self.max_packet_size).decode()
+                if r == "y":
+                    print(f"{Fore.GREEN}File accepted{Fore.RESET}")
+                    print(f"\n{Fore.MAGENTA}Sending...")
+                    self.send_file(s)
+                    print(f"{Fore.GREEN}Sent")
+                else:
+                    print(f"{Fore.RED}File rejected{Fore.RESET}")
+            return True
+        except:
+            return False
+    
                 
     
     def send_file(self, s):
@@ -120,6 +146,7 @@ class Network:
     
       
     def scan_network(self, p=True):
+        print(Fore.BLACK, end="\r")
         time_start = t.time()
         loop = asyncio.get_event_loop()
         results = loop.run_until_complete(self.get_devices())
@@ -134,11 +161,13 @@ class Network:
         return active
         
         
+        
     async def get_devices(self):
         ip_mask = self.local_ip.split(".")
         ip_mask = f"{ip_mask[0]}.{ip_mask[1]}.{ip_mask[2]}." 
         results = await asyncio.gather(*(self.ping(ip_mask+str(i), self.port) for i in range(256)))
         return results
+    
     
     
     async def ping(self, ip, port):
@@ -167,9 +196,10 @@ def time_stamp():
     return datetime.datetime.now().strftime(f"{Fore.LIGHTBLACK_EX}[%Y-%m-%d %H:%M:%S]{Fore.RESET}")
 
 
+
 def printProgressBar (progress, total, time_start):
     percent = 100 * (progress / total)
-    bar = "█" * int(percent) + "-" * (100 - int(percent))
+    bar = "█" * int(percent) + "-" * ((100 - int(percent)))
     time_total = t.time() - time_start
     if time_total >= 60:
         time_total = f"{int(time_total // 60)}m {(time_total % 60):.2f}s"
@@ -201,7 +231,6 @@ def convert_size(size_bytes):
         
 
 
-
 if len(sys.argv) > 1:
     arg = sys.argv[1]
     if arg == "-r":
@@ -209,4 +238,17 @@ if len(sys.argv) > 1:
     elif arg == "-s":
         network = Network(role="client")
 else:
-    network = Network(role="client")
+    mode = "null"
+    allowed_r = ["r", "R", "receiving"]
+    allowed_s = ["s", "S", "sending"]
+    print(Fore.BLUE)
+    while mode == "null":
+        reply = input("Select mode receiving/sending(R/s): ")
+        if (reply == ""):
+            reply = "r"
+        if reply in allowed_r:
+            mode = "server"
+        elif reply in allowed_s:
+            mode = "client"
+    print(Fore.RESET)
+    network = Network(role=mode)
