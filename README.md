@@ -16,13 +16,13 @@ This is a simple Python-based tool for sending and receiving files over a **loca
 
 ## 📷 Screenshots
 
-### 🖥️ Receiver Waiting for Files  
+### 🖥️ Receiver
 
 <img width="800" alt="image" src="https://github.com/user-attachments/assets/3d21d50c-be43-47d7-9be6-fb2386438452" />
 
 ---
 
-### 📤 Sending a File  
+### 📤 Sender
 
 <img width="800" alt="image" src="https://github.com/user-attachments/assets/1b6bc2ae-a2f0-4113-95f6-7ccddcb699d6" />
 
@@ -35,3 +35,9 @@ This is a simple Python-based tool for sending and receiving files over a **loca
 
 ```bash
 pip install colorama
+```
+
+### 2. Run using python
+```bash
+python FileTransfer.py
+```
