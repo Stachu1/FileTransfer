@@ -14,21 +14,19 @@ class File:
         self.size = os.path.getsize(self.path)
 
 
-
 class Network:
     def __init__(self, role="server", file=None, server_ip=None, max_packet_size=2048):
         self.hostname = socket.gethostname()
         self.local_ip = self.get_local_ip()
         self.port = 7881
         self.max_packet_size = max_packet_size
-        self.timeout = 5
+        self.timeout = 3
         if role == "client":
             self.client()
-                
-            
+
+
         elif role == "server":
             self.server()
-    
     
     
     def server(self):
@@ -45,7 +43,7 @@ class Network:
                     if data[0] == "ping":
                         conn.send(f"{self.hostname}:{self.max_packet_size}".encode())
                         continue
-                        
+
                     file_name = data[0]
                     sender_name = data[1]
                     file_size = int(data[2])
@@ -64,9 +62,8 @@ class Network:
                         conn.send("n".encode())
                         print("\n\n")
                         print(f"{Fore.MAGENTA}Waiting for files...\n{Fore.RESET}")
-                        
-                        
-    
+
+
     def recive_file(self, conn, file_name, file_size):
         time_start = t.time()
         progress = 0
@@ -79,9 +76,8 @@ class Network:
                 else:
                     f.write(data)
                     printProgressBar(progress, file_size, time_start)
-            
-            
-            
+
+
     def client(self):
         user_input = input(f"\n{Fore.BLUE}Enter reciver's IP or press ENTER to perform network scan: ")
         if len(user_input.split(".")) == 4:
@@ -89,6 +85,9 @@ class Network:
         else:
             print(f"\n{Fore.MAGENTA}Sacnning...{Fore.RESET}")
             devices_online = self.scan_network()
+            if len(devices_online) == 0:
+                print(f"{Fore.RED}No devices found{Fore.RESET}")
+                exit()
             devide_index = int(input("Choose device from list: ")) - 1
             device = False
             while not device:
@@ -106,8 +105,8 @@ class Network:
                 else:
                     print(f"{Fore.RED}\nError\n{Fore.RESET}")
             exit()
-        
-    
+
+
     def client_loop(self):
         try:
             self.file = File(input("Enter path to the file: "))
@@ -130,9 +129,8 @@ class Network:
             return True
         except:
             return False
-    
-                
-    
+
+
     def send_file(self, s):
         chunks = self.file.size // self.max_packet_size
         left_bytes = self.file.size - chunks * self.max_packet_size
@@ -142,13 +140,12 @@ class Network:
                 s.send(chunk)
             byte = f.read(left_bytes)
             s.send(byte)
-    
-    
-      
+
+
     def scan_network(self, p=True):
         print(Fore.BLACK, end="\r")
         time_start = t.time()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         results = loop.run_until_complete(self.get_devices())
         print(f"{Fore.GREEN}\nDone\n\n{Fore.CYAN}Available devices:\n")
         active = []
@@ -159,17 +156,15 @@ class Network:
             if r != False:
                 print(f"{Fore.YELLOW}[{index+1}]\n{Fore.GREEN}Hostname: {Fore.RESET}{r[0]}\n{Fore.BLUE}IP: {Fore.RESET}{r[1]}{Fore.RESET}\n")
         return active
-        
-        
-        
+
+
     async def get_devices(self):
         ip_mask = self.local_ip.split(".")
         ip_mask = f"{ip_mask[0]}.{ip_mask[1]}.{ip_mask[2]}." 
         results = await asyncio.gather(*(self.ping(ip_mask+str(i), self.port) for i in range(256)))
         return results
-    
-    
-    
+
+
     async def ping(self, ip, port):
         try:
             r, w = await asyncio.wait_for(asyncio.open_connection(ip, port), self.timeout)
@@ -180,9 +175,8 @@ class Network:
         r = r.decode().split(":")
         user = [r[0], ip, r[1]]
         return user
-    
-    
-    
+
+
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('8.8.8.8', 1))
@@ -191,15 +185,14 @@ class Network:
         return local_ip_address
 
 
-
 def time_stamp():
     return datetime.datetime.now().strftime(f"{Fore.LIGHTBLACK_EX}[%Y-%m-%d %H:%M:%S]{Fore.RESET}")
 
 
-
 def printProgressBar (progress, total, time_start):
     percent = 100 * (progress / total)
-    bar = "█" * int(percent) + "-" * ((100 - int(percent)))
+    bar_len = os.get_terminal_size().columns - 50
+    bar = "█" * int(percent / 100 * bar_len) + "-" * ((bar_len - int(percent / 100 * bar_len)))
     time_total = t.time() - time_start
     if time_total >= 60:
         time_total = f"{int(time_total // 60)}m {(time_total % 60):.2f}s"
@@ -214,9 +207,9 @@ def printProgressBar (progress, total, time_start):
             time_left = f"{int(time_left // 60)}m {(time_left % 60):.2f}s"
         else:
             time_left = f"{time_left:.2f}s"
-    print(f"{bar} {percent:.2f}%   t: {time_total}   eta: " + time_left, end="     \r")
+    print(f"\r\33[2K{bar} {percent:.2f}%   t: {time_total}   eta: " + time_left, end="")
     if progress == total: 
-        print(f"{Fore.GREEN}{bar} {percent:.2f}%   t: {time_total}   eta: --      {Fore.RESET}")
+        print(f"\r\33[2K{Fore.GREEN}{bar} {percent:.2f}%   t: {time_total}   eta: --{Fore.RESET}")
 
 
 def convert_size(size_bytes):
@@ -227,8 +220,8 @@ def convert_size(size_bytes):
     p = math.pow(1000, i)
     s = round(size_bytes / p, 2)
     return f"{s} {size_name[i]}"
-        
-        
+
+
 
 
 if len(sys.argv) > 1:
